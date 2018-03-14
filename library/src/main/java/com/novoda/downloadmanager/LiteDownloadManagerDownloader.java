@@ -82,15 +82,18 @@ class LiteDownloadManagerDownloader {
         return () -> {
             downloadBatch.persistAsync();
             InternalDownloadBatchStatus downloadBatchStatus = downloadBatch.status();
-            updateStatusToQueuedIfNeeded(downloadBatchStatus);
+            downloadBatchStatus = updateStatusToQueuedIfNeeded(downloadBatchStatus);
+            downloadBatch.setStatus(downloadBatchStatus);
             downloadService.download(downloadBatch, downloadBatchCallback());
             return null;
         };
     }
 
-    private void updateStatusToQueuedIfNeeded(InternalDownloadBatchStatus downloadBatchStatus) {
+    private InternalDownloadBatchStatus updateStatusToQueuedIfNeeded(InternalDownloadBatchStatus downloadBatchStatus) {
         if (downloadBatchStatus.status() != PAUSED && downloadBatchStatus.status() != DOWNLOADED) {
-            downloadBatchStatus.markAsQueued(downloadsBatchPersistence);
+            return downloadBatchStatus.markAsQueued(downloadsBatchPersistence);
+        } else {
+            return downloadBatchStatus;
         }
     }
 

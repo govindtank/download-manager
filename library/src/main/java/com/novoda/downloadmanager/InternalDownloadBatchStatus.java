@@ -2,19 +2,19 @@ package com.novoda.downloadmanager;
 
 interface InternalDownloadBatchStatus extends DownloadBatchStatus {
 
-    void update(long currentBytesDownloaded, long totalBatchSizeBytes);
+    LiteDownloadBatchStatus update(long currentBytesDownloaded, long totalBatchSizeBytes);
 
-    void markAsDownloading(DownloadsBatchStatusPersistence persistence);
+    LiteDownloadBatchStatus markAsDownloading(DownloadsBatchStatusPersistence persistence);
 
-    void markAsPaused(DownloadsBatchStatusPersistence persistence);
+    LiteDownloadBatchStatus markAsPaused(DownloadsBatchStatusPersistence persistence);
 
-    void markAsQueued(DownloadsBatchStatusPersistence persistence);
+    LiteDownloadBatchStatus markAsQueued(DownloadsBatchStatusPersistence persistence);
 
-    void markAsDeleted();
+    LiteDownloadBatchStatus markAsDeleted();
 
-    void markAsError(Optional<DownloadError> downloadError, DownloadsBatchStatusPersistence persistence);
+    LiteDownloadBatchStatus markAsError(Optional<DownloadError> downloadError, DownloadsBatchStatusPersistence persistence);
 
-    void markAsDownloaded(DownloadsBatchStatusPersistence persistence);
+    LiteDownloadBatchStatus markAsDownloaded(DownloadsBatchStatusPersistence persistence);
 
-    void markAsWaitingForNetwork(DownloadsBatchPersistence persistence);
+    LiteDownloadBatchStatus markAsWaitingForNetwork(DownloadsBatchPersistence persistence);
 }

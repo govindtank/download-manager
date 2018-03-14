@@ -1,35 +1,48 @@
 package com.novoda.downloadmanager;
 
 import android.support.annotation.Nullable;
-import android.support.annotation.WorkerThread;
 
 class LiteDownloadBatchStatus implements InternalDownloadBatchStatus {
 
     private static final long ZERO_BYTES = 0;
     private static final int TOTAL_PERCENTAGE = 100;
+    private static final boolean NOTIFICATION_NOT_SEEN = false;
 
     private final DownloadBatchTitle downloadBatchTitle;
     private final DownloadBatchId downloadBatchId;
     private final long downloadedDateTimeInMillis;
-
-    private long bytesDownloaded;
-    private long totalBatchSizeBytes;
-    private int percentageDownloaded;
-    private Status status;
-    private boolean notificationSeen;
-
-    private Optional<DownloadError> downloadError = Optional.absent();
+    private final Status status;
+    private final boolean notificationSeen;
+    private final long bytesDownloaded;
+    private final long totalBatchSizeBytes;
+    private final int percentageDownloaded;
+    private final Optional<DownloadError> downloadError;
 
     LiteDownloadBatchStatus(DownloadBatchId downloadBatchId,
                             DownloadBatchTitle downloadBatchTitle,
                             long downloadedDateTimeInMillis,
                             Status status,
-                            boolean notificationSeen) {
+                            boolean notificationSeen,
+                            long bytesDownloaded,
+                            long totalBatchSizeBytes,
+                            Optional<DownloadError> downloadError) {
         this.downloadBatchTitle = downloadBatchTitle;
         this.downloadBatchId = downloadBatchId;
         this.downloadedDateTimeInMillis = downloadedDateTimeInMillis;
         this.status = status;
         this.notificationSeen = notificationSeen;
+        this.bytesDownloaded = bytesDownloaded;
+        this.totalBatchSizeBytes = totalBatchSizeBytes;
+        this.percentageDownloaded = getPercentageFrom(bytesDownloaded, totalBatchSizeBytes);
+        this.downloadError = downloadError;
+    }
+
+    private int getPercentageFrom(long bytesDownloaded, long totalFileSizeBytes) {
+        if (totalBatchSizeBytes <= ZERO_BYTES) {
+            return 0;
+        } else {
+            return (int) ((((float) bytesDownloaded) / ((float) totalFileSizeBytes)) * TOTAL_PERCENTAGE);
+        }
     }
 
     @Override
@@ -43,18 +56,8 @@ class LiteDownloadBatchStatus implements InternalDownloadBatchStatus {
     }
 
     @Override
-    public void update(long currentBytesDownloaded, long totalBatchSizeBytes) {
-        this.bytesDownloaded = currentBytesDownloaded;
-        this.totalBatchSizeBytes = totalBatchSizeBytes;
-        this.percentageDownloaded = getPercentageFrom(bytesDownloaded, totalBatchSizeBytes);
-    }
-
-    private int getPercentageFrom(long bytesDownloaded, long totalFileSizeBytes) {
-        if (totalBatchSizeBytes <= ZERO_BYTES) {
-            return 0;
-        } else {
-            return (int) ((((float) bytesDownloaded) / ((float) totalFileSizeBytes)) * TOTAL_PERCENTAGE);
-        }
+    public LiteDownloadBatchStatus update(long currentBytesDownloaded, long totalBatchSizeBytes) {
+        return copy(currentBytesDownloaded, totalBatchSizeBytes);
     }
 
     @Override
@@ -82,51 +85,45 @@ class LiteDownloadBatchStatus implements InternalDownloadBatchStatus {
         return downloadedDateTimeInMillis;
     }
 
-    @WorkerThread
     @Override
-    public void markAsDownloading(DownloadsBatchStatusPersistence persistence) {
-        status = Status.DOWNLOADING;
-        updateStatusAsync(status, persistence);
+    public LiteDownloadBatchStatus markAsDownloading(DownloadsBatchStatusPersistence persistence) {
+        updateStatusAsync(Status.DOWNLOADING, persistence);
+        return copy(Status.DOWNLOADING);
     }
 
     @Override
-    public void markAsPaused(DownloadsBatchStatusPersistence persistence) {
-        status = Status.PAUSED;
-        updateStatusAsync(status, persistence);
+    public LiteDownloadBatchStatus markAsPaused(DownloadsBatchStatusPersistence persistence) {
+        updateStatusAsync(Status.PAUSED, persistence);
+        return copy(Status.PAUSED);
     }
 
     @Override
-    public void markAsQueued(DownloadsBatchStatusPersistence persistence) {
-        status = Status.QUEUED;
-        updateStatusAsync(status, persistence);
+    public LiteDownloadBatchStatus markAsQueued(DownloadsBatchStatusPersistence persistence) {
+        updateStatusAsync(Status.QUEUED, persistence);
+        return copy(Status.QUEUED);
     }
 
     @Override
-    public void markAsDeleted() {
-        status = Status.DELETED;
-        notificationSeen = false;
+    public LiteDownloadBatchStatus markAsDeleted() {
+        return copy(Status.DELETED, NOTIFICATION_NOT_SEEN);
     }
 
-    @WorkerThread
     @Override
-    public void markAsError(Optional<DownloadError> downloadError, DownloadsBatchStatusPersistence persistence) {
-        this.status = Status.ERROR;
-        this.downloadError = downloadError;
+    public LiteDownloadBatchStatus markAsError(Optional<DownloadError> downloadError, DownloadsBatchStatusPersistence persistence) {
         updateStatusAsync(status, persistence);
+        return copy(Status.ERROR, downloadError);
     }
 
-    @WorkerThread
     @Override
-    public void markAsDownloaded(DownloadsBatchStatusPersistence persistence) {
-        this.status = Status.DOWNLOADED;
+    public LiteDownloadBatchStatus markAsDownloaded(DownloadsBatchStatusPersistence persistence) {
         updateStatusAsync(status, persistence);
+        return copy(Status.DOWNLOADED);
     }
 
-    @WorkerThread
     @Override
-    public void markAsWaitingForNetwork(DownloadsBatchPersistence persistence) {
-        this.status = Status.WAITING_FOR_NETWORK;
+    public LiteDownloadBatchStatus markAsWaitingForNetwork(DownloadsBatchPersistence persistence) {
         updateStatusAsync(status, persistence);
+        return copy(Status.WAITING_FOR_NETWORK);
     }
 
     private void updateStatusAsync(Status status, DownloadsBatchStatusPersistence persistence) {
@@ -146,6 +143,58 @@ class LiteDownloadBatchStatus implements InternalDownloadBatchStatus {
     @Override
     public boolean notificationSeen() {
         return notificationSeen;
+    }
+
+    private LiteDownloadBatchStatus copy(long currentBytesDownloaded, long totalBatchSizeBytes) {
+        return new LiteDownloadBatchStatus(
+                downloadBatchId,
+                downloadBatchTitle,
+                downloadedDateTimeInMillis,
+                status,
+                notificationSeen,
+                currentBytesDownloaded,
+                totalBatchSizeBytes,
+                downloadError
+        );
+    }
+
+    private LiteDownloadBatchStatus copy(Status status) {
+        return new LiteDownloadBatchStatus(
+                downloadBatchId,
+                downloadBatchTitle,
+                downloadedDateTimeInMillis,
+                status,
+                notificationSeen,
+                bytesDownloaded,
+                totalBatchSizeBytes,
+                downloadError
+        );
+    }
+
+    private LiteDownloadBatchStatus copy(Status status, boolean notificationSeen) {
+        return new LiteDownloadBatchStatus(
+                downloadBatchId,
+                downloadBatchTitle,
+                downloadedDateTimeInMillis,
+                status,
+                notificationSeen,
+                bytesDownloaded,
+                totalBatchSizeBytes,
+                downloadError
+        );
+    }
+
+    private LiteDownloadBatchStatus copy(Status status, Optional<DownloadError> downloadError) {
+        return new LiteDownloadBatchStatus(
+                downloadBatchId,
+                downloadBatchTitle,
+                downloadedDateTimeInMillis,
+                status,
+                notificationSeen,
+                bytesDownloaded,
+                totalBatchSizeBytes,
+                downloadError
+        );
     }
 
     @Override

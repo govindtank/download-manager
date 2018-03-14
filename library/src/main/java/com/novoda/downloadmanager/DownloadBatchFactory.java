@@ -9,6 +9,10 @@ import java.util.List;
 final class DownloadBatchFactory {
 
     private static final boolean NOTIFICATION_NOT_SEEN = false;
+    public static final int BYTES_DOWNLOADED = 0;
+    public static final int TOTAL_BATCH_SIZE_BYTES = 0;
+    public static final int PERCENTAGE_DOWNLOADED = 0;
+    public static final Optional<DownloadError> DOWNLOAD_ERROR = Optional.absent();
 
     private DownloadBatchFactory() {
         // non instantiable factory class
@@ -73,7 +77,10 @@ final class DownloadBatchFactory {
                 downloadBatchTitle,
                 downloadedDateTimeInMillis,
                 DownloadBatchStatus.Status.QUEUED,
-                NOTIFICATION_NOT_SEEN
+                NOTIFICATION_NOT_SEEN,
+                BYTES_DOWNLOADED,
+                TOTAL_BATCH_SIZE_BYTES,
+                DOWNLOAD_ERROR
         );
 
         return new DownloadBatch(

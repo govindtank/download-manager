@@ -22,13 +22,13 @@ class DownloadBatch {
     private static final int ZERO_BYTES = 0;
 
     private final Map<DownloadFileId, Long> fileBytesDownloadedMap;
-    private final InternalDownloadBatchStatus downloadBatchStatus;
     private final List<DownloadFile> downloadFiles;
     private final DownloadsBatchPersistence downloadsBatchPersistence;
     private final CallbackThrottle callbackThrottle;
     private final ConnectionChecker connectionChecker;
 
     private long totalBatchSizeBytes;
+    private InternalDownloadBatchStatus downloadBatchStatus;
     private DownloadBatchStatusCallback callback;
 
     DownloadBatch(InternalDownloadBatchStatus internalDownloadBatchStatus,
@@ -51,27 +51,31 @@ class DownloadBatch {
     }
 
     void download() {
+        Log.v("start download batch " + downloadBatchStatus.getDownloadBatchId().rawId());
         DownloadBatchStatus.Status status = downloadBatchStatus.status();
 
         if (status == DELETED) {
             deleteBatchIfNeeded();
             notifyCallback(downloadBatchStatus);
+            Log.v("abort deleted download batch " + downloadBatchStatus.getDownloadBatchId().rawId());
             return;
         }
 
         if (status == PAUSED) {
             notifyCallback(downloadBatchStatus);
+            Log.v("abort paused download batch " + downloadBatchStatus.getDownloadBatchId().rawId());
             return;
         }
 
         if (connectionNotAllowedForDownload(status)) {
             processNetworkError();
             notifyCallback(downloadBatchStatus);
+            Log.v("abort not allowed download batch " + downloadBatchStatus.getDownloadBatchId().rawId());
             return;
         }
 
         if (status != DOWNLOADED) {
-            downloadBatchStatus.markAsDownloading(downloadsBatchPersistence);
+            downloadBatchStatus = downloadBatchStatus.markAsDownloading(downloadsBatchPersistence);
             notifyCallback(downloadBatchStatus);
         }
 
@@ -83,12 +87,13 @@ class DownloadBatch {
             deleteBatchIfNeeded();
             processNetworkError();
             notifyCallback(downloadBatchStatus);
+            Log.v("abort total size is zero download batch " + downloadBatchStatus.getDownloadBatchId().rawId());
             return;
         }
 
         for (DownloadFile downloadFile : downloadFiles) {
             if (connectionNotAllowedForDownload(status)) {
-                downloadBatchStatus.markAsWaitingForNetwork(downloadsBatchPersistence);
+                downloadBatchStatus = downloadBatchStatus.markAsWaitingForNetwork(downloadsBatchPersistence);
                 notifyCallback(downloadBatchStatus);
                 break;
             }
@@ -105,6 +110,7 @@ class DownloadBatch {
         notifyCallback(downloadBatchStatus);
         deleteBatchIfNeeded();
         callbackThrottle.stopUpdates();
+        Log.v("end download batch " + downloadBatchStatus.getDownloadBatchId().rawId());
     }
 
     private void deleteBatchIfNeeded() {
@@ -117,7 +123,7 @@ class DownloadBatch {
         if (downloadBatchStatus.status() == DELETED) {
             return;
         }
-        downloadBatchStatus.markAsWaitingForNetwork(downloadsBatchPersistence);
+        downloadBatchStatus = downloadBatchStatus.markAsWaitingForNetwork(downloadsBatchPersistence);
         notifyCallback(downloadBatchStatus);
         DownloadsNetworkRecoveryCreator.getInstance().scheduleRecovery();
     }
@@ -131,18 +137,18 @@ class DownloadBatch {
         public void onUpdate(InternalDownloadFileStatus downloadFileStatus) {
             fileBytesDownloadedMap.put(downloadFileStatus.downloadFileId(), downloadFileStatus.bytesDownloaded());
             long currentBytesDownloaded = getBytesDownloadedFrom(fileBytesDownloadedMap);
-            downloadBatchStatus.update(currentBytesDownloaded, totalBatchSizeBytes);
+            downloadBatchStatus = downloadBatchStatus.update(currentBytesDownloaded, totalBatchSizeBytes);
 
             if (currentBytesDownloaded == totalBatchSizeBytes && totalBatchSizeBytes != ZERO_BYTES) {
-                downloadBatchStatus.markAsDownloaded(downloadsBatchPersistence);
+                downloadBatchStatus = downloadBatchStatus.markAsDownloaded(downloadsBatchPersistence);
             }
 
             if (downloadFileStatus.isMarkedAsError()) {
-                downloadBatchStatus.markAsError(downloadFileStatus.error(), downloadsBatchPersistence);
+                downloadBatchStatus = downloadBatchStatus.markAsError(downloadFileStatus.error(), downloadsBatchPersistence);
             }
 
             if (downloadFileStatus.isMarkedAsWaitingForNetwork()) {
-                downloadBatchStatus.markAsWaitingForNetwork(downloadsBatchPersistence);
+                downloadBatchStatus = downloadBatchStatus.markAsWaitingForNetwork(downloadsBatchPersistence);
             }
 
             callbackThrottle.update(downloadBatchStatus);
@@ -203,7 +209,7 @@ class DownloadBatch {
         if (status == PAUSED || status == DOWNLOADED) {
             return;
         }
-        downloadBatchStatus.markAsPaused(downloadsBatchPersistence);
+        downloadBatchStatus = downloadBatchStatus.markAsPaused(downloadsBatchPersistence);
         notifyCallback(downloadBatchStatus);
 
         for (DownloadFile downloadFile : downloadFiles) {
@@ -227,7 +233,7 @@ class DownloadBatch {
         if (status == QUEUED || status == DOWNLOADING || status == DOWNLOADED) {
             return;
         }
-        downloadBatchStatus.markAsQueued(downloadsBatchPersistence);
+        downloadBatchStatus = downloadBatchStatus.markAsQueued(downloadsBatchPersistence);
         notifyCallback(downloadBatchStatus);
         for (DownloadFile downloadFile : downloadFiles) {
             downloadFile.resume();
@@ -239,7 +245,7 @@ class DownloadBatch {
             downloadsBatchPersistence.deleteAsync(downloadBatchStatus.getDownloadBatchId());
         }
 
-        downloadBatchStatus.markAsDeleted();
+        downloadBatchStatus = downloadBatchStatus.markAsDeleted();
         notifyCallback(downloadBatchStatus);
         for (DownloadFile downloadFile : downloadFiles) {
             downloadFile.delete();
@@ -273,5 +279,9 @@ class DownloadBatch {
                 downloadBatchStatus.downloadedDateTimeInMillis(),
                 downloadBatchStatus.notificationSeen()
         );
+    }
+
+    public void setStatus(InternalDownloadBatchStatus downloadBatchStatus) {
+        this.downloadBatchStatus = downloadBatchStatus;
     }
 }

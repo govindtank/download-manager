@@ -11,6 +11,11 @@ import java.util.concurrent.Executor;
 
 class DownloadsBatchPersistence implements DownloadsBatchStatusPersistence, DownloadsNotificationSeenPersistence {
 
+    private static final int BYTES_DOWNLOADED = 0;
+    private static final int TOTAL_BATCH_SIZE_BYTES = 0;
+    private static final int PERCENTAGE_DOWNLOADED = 0;
+    private static final Optional<DownloadError> DOWNLOAD_ERROR = Optional.absent();
+
     private final Executor executor;
     private final DownloadsFilePersistence downloadsFilePersistence;
     private final DownloadsPersistence downloadsPersistence;
@@ -71,13 +76,6 @@ class DownloadsBatchPersistence implements DownloadsBatchStatusPersistence, Down
                 DownloadBatchTitle downloadBatchTitle = batchPersisted.downloadBatchTitle();
                 long downloadedDateTimeInMillis = batchPersisted.downloadedDateTimeInMillis();
                 boolean notificationSeen = batchPersisted.notificationSeen();
-                InternalDownloadBatchStatus liteDownloadBatchStatus = new LiteDownloadBatchStatus(
-                        downloadBatchId,
-                        downloadBatchTitle,
-                        downloadedDateTimeInMillis,
-                        status,
-                        notificationSeen
-                );
 
                 List<DownloadFile> downloadFiles = downloadsFilePersistence.loadSync(
                         downloadBatchId,
@@ -105,7 +103,16 @@ class DownloadsBatchPersistence implements DownloadsBatchStatusPersistence, Down
                     }
                 }
 
-                liteDownloadBatchStatus.update(currentBytesDownloaded, totalBatchSizeBytes);
+                InternalDownloadBatchStatus liteDownloadBatchStatus = new LiteDownloadBatchStatus(
+                        downloadBatchId,
+                        downloadBatchTitle,
+                        downloadedDateTimeInMillis,
+                        status,
+                        notificationSeen,
+                        currentBytesDownloaded,
+                        totalBatchSizeBytes,
+                        DOWNLOAD_ERROR
+                );
 
                 CallbackThrottle callbackThrottle = callbackThrottleCreator.create();
 
@@ -153,7 +160,7 @@ class DownloadsBatchPersistence implements DownloadsBatchStatusPersistence, Down
     @Override
     public void updateNotificationSeenAsync(DownloadBatchStatus downloadBatchStatus, boolean notificationSeen) {
         executor.execute(() -> {
-            Log.v("start updateNotificationSeenAsync with: " + downloadBatchStatus + ", notificationSeen: " + notificationSeen);
+            Log.v("start updateNotificationSeenAsync with: " + downloadBatchStatus.getDownloadBatchId() + ", status: " + downloadBatchStatus.status() + ", notificationSeen: " + notificationSeen);
             if (downloadBatchStatus.status() == DownloadBatchStatus.Status.DOWNLOADED) {
                 downloadsPersistence.startTransaction();
                 try {
@@ -163,7 +170,7 @@ class DownloadsBatchPersistence implements DownloadsBatchStatusPersistence, Down
                     downloadsPersistence.endTransaction();
                 }
             }
-            Log.v("end updateNotificationSeenAsync with: " + downloadBatchStatus + ", notificationSeen: " + notificationSeen);
+            Log.v("end updateNotificationSeenAsync with: " + downloadBatchStatus.getDownloadBatchId() + ", status: " + downloadBatchStatus.status() + ", notificationSeen: " + notificationSeen);
         });
     }
 

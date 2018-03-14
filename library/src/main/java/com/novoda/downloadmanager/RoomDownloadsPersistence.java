@@ -116,10 +116,10 @@ final class RoomDownloadsPersistence implements DownloadsPersistence {
 
     @Override
     public void delete(DownloadBatchId downloadBatchId) {
-        Log.v("start delete " + downloadBatchId.rawId());
+        Log.v("start delete batch " + downloadBatchId.rawId());
         RoomBatch roomBatch = database.roomBatchDao().load(downloadBatchId.rawId());
         database.roomBatchDao().delete(roomBatch);
-        Log.v("end delete " + downloadBatchId.rawId());
+        Log.v("end delete batch " + downloadBatchId.rawId());
     }
 
     @Override
@@ -133,10 +133,10 @@ final class RoomDownloadsPersistence implements DownloadsPersistence {
 
     @Override
     public void update(DownloadBatchId downloadBatchId, boolean notificationSeen) {
-        Log.v("start update notification " + downloadBatchId.rawId());
+        Log.v("start update notification " + downloadBatchId.rawId() + ", notificationSeen: " + notificationSeen);
         RoomBatch roomBatch = database.roomBatchDao().load(downloadBatchId.rawId());
         roomBatch.notificationSeen = notificationSeen;
         database.roomBatchDao().update(roomBatch);
-        Log.v("end update  notification" + downloadBatchId.rawId());
+        Log.v("end update notification " + downloadBatchId.rawId());
     }
 }
