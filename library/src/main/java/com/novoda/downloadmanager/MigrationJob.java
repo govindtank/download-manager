@@ -47,9 +47,6 @@ class MigrationJob {
                 totalNumberOfMigrations
         );
 
-        migrationStatus.markAsExtracting();
-        onUpdate(migrationStatus);
-
         migrationStatus.markAsMigrating();
         onUpdate(migrationStatus);
 

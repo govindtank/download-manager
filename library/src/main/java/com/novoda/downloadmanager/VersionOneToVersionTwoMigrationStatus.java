@@ -26,18 +26,8 @@ class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
     }
 
     @Override
-    public void markAsExtracting() {
-        status = Status.EXTRACTING;
-    }
-
-    @Override
     public void markAsMigrating() {
         status = Status.MIGRATING_FILES;
-    }
-
-    @Override
-    public void markAsDeleting() {
-        status = Status.DELETING_V1_DATABASE;
     }
 
     @Override

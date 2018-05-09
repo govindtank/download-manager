@@ -7,7 +7,6 @@ public interface MigrationStatus {
         DB_NOT_PRESENT,
         EXTRACTING,
         MIGRATING_FILES,
-        DELETING_V1_DATABASE,
         COMPLETE;
 
         public String toRawValue() {
