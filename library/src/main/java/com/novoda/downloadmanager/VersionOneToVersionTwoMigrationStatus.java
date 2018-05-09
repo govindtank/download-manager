@@ -1,5 +1,7 @@
 package com.novoda.downloadmanager;
 
+import android.support.annotation.Nullable;
+
 class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
 
     private static final int TOTAL_PERCENTAGE = 100;
@@ -9,15 +11,18 @@ class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
 
     private Status status;
     private int numberOfMigrationsCompleted;
+    private Optional<MigrationError> migrationError;
 
     VersionOneToVersionTwoMigrationStatus(String migrationId,
                                           Status status,
                                           int numberOfMigrationsCompleted,
-                                          int totalNumberOfMigrations) {
+                                          int totalNumberOfMigrations,
+                                          Optional<MigrationError> migrationError) {
         this.migrationId = migrationId;
         this.status = status;
         this.numberOfMigrationsCompleted = numberOfMigrationsCompleted;
         this.totalNumberOfMigrations = totalNumberOfMigrations;
+        this.migrationError = migrationError;
     }
 
     @Override
@@ -33,6 +38,12 @@ class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
     @Override
     public void markAsComplete() {
         status = Status.COMPLETE;
+    }
+
+    @Override
+    public void markAsError(MigrationError.Error error) {
+        status = Status.ERROR;
+        this.migrationError = Optional.of(new MigrationError(error));
     }
 
     @Override
@@ -60,13 +71,24 @@ class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
         return status;
     }
 
+    @Nullable
+    @Override
+    public MigrationError error() {
+        if (migrationError.isPresent()) {
+            return migrationError.get();
+        } else {
+            return null;
+        }
+    }
+
     @Override
     public InternalMigrationStatus copy() {
         return new VersionOneToVersionTwoMigrationStatus(
                 migrationId,
                 status,
                 numberOfMigrationsCompleted,
-                totalNumberOfMigrations
+                totalNumberOfMigrations,
+                migrationError
         );
     }
 
@@ -81,24 +103,28 @@ class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
 
         VersionOneToVersionTwoMigrationStatus that = (VersionOneToVersionTwoMigrationStatus) o;
 
-        if (numberOfMigrationsCompleted != that.numberOfMigrationsCompleted) {
+        if (totalNumberOfMigrations != that.totalNumberOfMigrations) {
             return false;
         }
-        if (totalNumberOfMigrations != that.totalNumberOfMigrations) {
+        if (numberOfMigrationsCompleted != that.numberOfMigrationsCompleted) {
             return false;
         }
         if (migrationId != null ? !migrationId.equals(that.migrationId) : that.migrationId != null) {
             return false;
         }
-        return status == that.status;
+        if (status != that.status) {
+            return false;
+        }
+        return migrationError != null ? migrationError.equals(that.migrationError) : that.migrationError == null;
     }
 
     @Override
     public int hashCode() {
         int result = migrationId != null ? migrationId.hashCode() : 0;
+        result = 31 * result + totalNumberOfMigrations;
         result = 31 * result + (status != null ? status.hashCode() : 0);
         result = 31 * result + numberOfMigrationsCompleted;
-        result = 31 * result + totalNumberOfMigrations;
+        result = 31 * result + (migrationError != null ? migrationError.hashCode() : 0);
         return result;
     }
 
@@ -106,9 +132,10 @@ class VersionOneToVersionTwoMigrationStatus implements InternalMigrationStatus {
     public String toString() {
         return "VersionOneToVersionTwoMigrationStatus{"
                 + "migrationId='" + migrationId + '\''
+                + ", totalNumberOfMigrations=" + totalNumberOfMigrations
                 + ", status=" + status
                 + ", numberOfMigrationsCompleted=" + numberOfMigrationsCompleted
-                + ", totalNumberOfMigrations=" + totalNumberOfMigrations
+                + ", migrationError=" + migrationError
                 + '}';
     }
 }

@@ -8,6 +8,8 @@ interface InternalMigrationStatus extends MigrationStatus {
 
     void markAsComplete();
 
+    void markAsError(MigrationError.Error error);
+
     InternalMigrationStatus copy();
 
 }

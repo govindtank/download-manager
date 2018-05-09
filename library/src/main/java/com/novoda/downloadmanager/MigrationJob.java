@@ -44,7 +44,8 @@ class MigrationJob {
                 jobIdentifier,
                 MigrationStatus.Status.MIGRATING_FILES,
                 NO_COMPLETED_MIGRATIONS,
-                totalNumberOfMigrations
+                totalNumberOfMigrations,
+                Optional.absent()
         );
 
         migrationStatus.markAsMigrating();
@@ -70,8 +71,8 @@ class MigrationJob {
         for (Migration completeMigration : completeMigrations) {
             downloadsPersistence.startTransaction();
 
-            migrateV1FilesToV2Location(filePersistence, completeMigration);
-            migrateV1DataToV2Database(downloadsPersistence, completeMigration, true);
+            migrateV1FilesToV2Location(migrationStatus, filePersistence, completeMigration);
+            migrateV1DataToV2Database(migrationStatus, downloadsPersistence, completeMigration, true);
 
             downloadsPersistence.transactionSuccess();
             downloadsPersistence.endTransaction();
@@ -80,7 +81,7 @@ class MigrationJob {
         }
     }
 
-    private void migrateV1FilesToV2Location(FilePersistence filePersistence, Migration migration) {
+    private void migrateV1FilesToV2Location(InternalMigrationStatus migrationStatus, FilePersistence filePersistence, Migration migration) {
         for (Migration.FileMetadata fileMetadata : migration.getFileMetadata()) {
             FileSize fileSize = FileSizeCreator.createFromTotalSize(fileMetadata.totalSizeInBytes());
             FilePath filePath = new LiteFilePath(fileMetadata.newFileLocation());
@@ -115,7 +116,7 @@ class MigrationJob {
         }
     }
 
-    private void migrateV1DataToV2Database(DownloadsPersistence downloadsPersistence,
+    private void migrateV1DataToV2Database(InternalMigrationStatus migrationStatus, DownloadsPersistence downloadsPersistence,
                                            Migration migration,
                                            boolean notificationSeen) {
         Batch batch = migration.batch();
@@ -172,7 +173,7 @@ class MigrationJob {
         for (Migration partialMigration : partialMigrations) {
             downloadsPersistence.startTransaction();
 
-            migrateV1DataToV2Database(downloadsPersistence, partialMigration, false);
+            migrateV1DataToV2Database(migrationStatus, downloadsPersistence, partialMigration, false);
 
             downloadsPersistence.transactionSuccess();
             downloadsPersistence.endTransaction();
