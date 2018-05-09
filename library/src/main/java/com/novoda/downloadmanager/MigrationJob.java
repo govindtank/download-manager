@@ -201,6 +201,7 @@ class MigrationJob {
             downloadsPersistence.startTransaction();
 
             migrateV1DataToV2Database(downloadsPersistence, partialMigration, false);
+            deleteVersionOneFiles(migrationStatus, partialMigration);
 
             downloadsPersistence.transactionSuccess();
             downloadsPersistence.endTransaction();
