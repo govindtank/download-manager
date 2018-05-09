@@ -69,13 +69,15 @@ class MigrationJob {
                                           DownloadsPersistence downloadsPersistence,
                                           FilePersistence filePersistence) {
         for (Migration completeMigration : completeMigrations) {
-            downloadsPersistence.startTransaction();
 
             migrateV1FilesToV2Location(migrationStatus, filePersistence, completeMigration);
-            migrateV1DataToV2Database(migrationStatus, downloadsPersistence, completeMigration, true);
+            if (migrationStatus.status() == MigrationStatus.Status.ERROR) {
+                onUpdate(migrationStatus);
+                return;
+            }
 
-            downloadsPersistence.transactionSuccess();
-            downloadsPersistence.endTransaction();
+            migrateV1DataToV2Database(downloadsPersistence, completeMigration, true);
+
             migrationStatus.onSingleBatchMigrated();
             onUpdate(migrationStatus);
         }
@@ -102,7 +104,7 @@ class MigrationJob {
                     }
                 }
             } catch (IOException e) {
-                Logger.e(e.getMessage());
+                migrationStatus.markAsError(MigrationError.Error.MIGRATING_V1_FILES_TO_V2_LOCATION);
             } finally {
                 try {
                     filePersistence.close();
@@ -110,15 +112,17 @@ class MigrationJob {
                         inputStream.close();
                     }
                 } catch (IOException e) {
-                    Logger.e(e.getMessage());
+                    migrationStatus.markAsError(MigrationError.Error.MIGRATING_V1_FILES_TO_V2_LOCATION);
                 }
             }
         }
     }
 
-    private void migrateV1DataToV2Database(InternalMigrationStatus migrationStatus, DownloadsPersistence downloadsPersistence,
+    private void migrateV1DataToV2Database(DownloadsPersistence downloadsPersistence,
                                            Migration migration,
                                            boolean notificationSeen) {
+        downloadsPersistence.startTransaction();
+
         Batch batch = migration.batch();
 
         DownloadBatchId downloadBatchId = batch.downloadBatchId();
@@ -153,6 +157,9 @@ class MigrationJob {
             );
             downloadsPersistence.persistFile(persistedFile);
         }
+
+        downloadsPersistence.transactionSuccess();
+        downloadsPersistence.endTransaction();
     }
 
     private DownloadBatchStatus.Status batchStatusFrom(Migration migration) {
@@ -173,7 +180,7 @@ class MigrationJob {
         for (Migration partialMigration : partialMigrations) {
             downloadsPersistence.startTransaction();
 
-            migrateV1DataToV2Database(migrationStatus, downloadsPersistence, partialMigration, false);
+            migrateV1DataToV2Database(downloadsPersistence, partialMigration, false);
 
             downloadsPersistence.transactionSuccess();
             downloadsPersistence.endTransaction();
