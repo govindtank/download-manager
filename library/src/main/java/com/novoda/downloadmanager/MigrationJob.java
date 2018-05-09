@@ -91,7 +91,7 @@ class MigrationJob {
             FileInputStream inputStream = null;
             try {
                 // open the v1 file
-                inputStream = new FileInputStream(new File(filePath.path()));
+                inputStream = new FileInputStream(new File(fileMetadata.originalFileLocation()));
                 byte[] bytes = new byte[RANDOMLY_CHOSEN_BUFFER_SIZE_THAT_SEEMS_TO_WORK];
 
                 // read the v1 file
