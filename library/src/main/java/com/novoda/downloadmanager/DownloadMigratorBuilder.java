@@ -140,8 +140,6 @@ public final class DownloadMigratorBuilder {
 
             if (status == MigrationStatus.Status.COMPLETE) {
                 return NotificationDisplayState.STACK_NOTIFICATION_DISMISSIBLE;
-            } else if (status == MigrationStatus.Status.DB_NOT_PRESENT) {
-                return NotificationDisplayState.HIDDEN_NOTIFICATION;
             } else {
                 return NotificationDisplayState.SINGLE_PERSISTENT_NOTIFICATION;
             }

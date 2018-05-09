@@ -42,7 +42,7 @@ class MigrationJob {
         int totalNumberOfMigrations = partialMigrations.size() + completeMigrations.size();
         InternalMigrationStatus migrationStatus = new VersionOneToVersionTwoMigrationStatus(
                 jobIdentifier,
-                MigrationStatus.Status.DB_NOT_PRESENT,
+                MigrationStatus.Status.MIGRATING_FILES,
                 NO_COMPLETED_MIGRATIONS,
                 totalNumberOfMigrations
         );
