@@ -71,6 +71,7 @@ class MigrationJob {
         for (Migration completeMigration : completeMigrations) {
 
             migrateV1FilesToV2Location(migrationStatus, filePersistence, completeMigration);
+            deleteVersionOneFiles(migrationStatus, completeMigration);
             if (migrationStatus.status() == MigrationStatus.Status.ERROR) {
                 onUpdate(migrationStatus);
                 return;
@@ -104,18 +105,37 @@ class MigrationJob {
                     }
                 }
             } catch (IOException e) {
+                Logger.e(e.getMessage());
                 migrationStatus.markAsError(MigrationError.Error.MIGRATING_V1_FILES_TO_V2_LOCATION);
             } finally {
                 try {
-                    filePersistence.close();
                     if (inputStream != null) {
                         inputStream.close();
                     }
                 } catch (IOException e) {
+                    Logger.e(e.getMessage());
                     migrationStatus.markAsError(MigrationError.Error.MIGRATING_V1_FILES_TO_V2_LOCATION);
                 }
             }
         }
+    }
+
+    private void deleteVersionOneFiles(InternalMigrationStatus migrationStatus, Migration migration) {
+        for (Migration.FileMetadata metadata : migration.getFileMetadata()) {
+            if (hasValidFileLocation(metadata)) {
+                File file = new File(metadata.originalFileLocation());
+                boolean deleted = file.delete();
+                if (!deleted) {
+                    migrationStatus.markAsError(MigrationError.Error.DELETING_V1_FILES);
+                    String message = String.format("Could not delete File or Directory: %s", file.getPath());
+                    Logger.e(getClass().getSimpleName(), message);
+                }
+            }
+        }
+    }
+
+    private boolean hasValidFileLocation(Migration.FileMetadata metadata) {
+        return metadata.originalFileLocation() != null && !metadata.originalFileLocation().isEmpty();
     }
 
     private void migrateV1DataToV2Database(DownloadsPersistence downloadsPersistence,
